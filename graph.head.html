@@ -1,0 +1,143 @@
+<meta http-equiv="refresh" content="300">
+  <style>
+  canvas { cursor: crosshair; }
+  #container { position: relative; }
+  #imageView {  }
+  #imageTemp { position: absolute; top: 0px; left: 0px; }
+  </style>
+<!-- significant portions from http://disruptive-innovations.com/zoo/demos/eyes.html -->
+  <script>
+    var img = new Image();
+    var pixels = null;
+    var targetr = null;
+    var targetg = null;
+    var targetb = null;
+    var imageData = null;
+    var flashImageData = null;
+    var orig_pixels = null;
+    var flashtimer = null;
+    var flashtimes = 0;
+
+    function loadImage()
+    {
+      img = new Image();
+      img.onload = function() {
+        copyImageToCanvas(img);
+      };
+      runLoad();
+    }
+
+    function copyImageToCanvas(aImg)
+    {
+      gCanvas = document.getElementById("canvas");
+      var w = aImg.naturalWidth;
+      var h = aImg.naturalHeight;
+      gCanvas.style.width = w + "px";
+      gCanvas.style.height = h + "px";
+      gCanvas.width = w;
+      gCanvas.height = h;
+
+      gCtx = gCanvas.getContext("2d");
+      gCtx.clearRect(0, 0, w, h);
+      gCtx.drawImage(aImg, 0, 0);
+
+      var container = gCanvas.parentNode;
+      gCanvas2 = document.createElement('canvas');
+      gCanvas2.id = "imageTemp";
+      gCanvas2.width  = w;
+      gCanvas2.height = h;
+      container.appendChild(gCanvas2);
+      gCtx2 = gCanvas2.getContext("2d");
+      gCanvas2.addEventListener("mousemove", onMouseMove, false);
+      gCanvas2.addEventListener("click", onMouseClick, false);
+
+      imageData = gCtx.getImageData(0, 0, w, h);
+      pixels = imageData.data;
+      flashImageData = gCtx.getImageData(0, 0, w, h);
+      orig_pixels = flashImageData.data;
+    }
+
+    var gCanvas = null;
+    var gCanvas2 = null;
+    var gCtx = null;
+    var gCtx2 = null;
+    var gActive = false;
+    var gStartX = 0;
+    var gStartY = 0;
+    var gEndX = -1;
+    var gEndY = -1;
+
+    function onMouseClick(aEvent) {
+      clearTimeout(flashtimer);
+    }
+
+    function onMouseMove(aEvent)
+    {
+      var x = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+      var y = event.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+      var e = canvas;
+      while (e)
+      {
+        x -= e.offsetLeft;
+        y -= e.offsetTop;
+        e = e.offsetParent;
+      }
+
+      var pixelOffset = (y * imageData.width + x) * 4;
+      var r = orig_pixels[pixelOffset];
+      var g = orig_pixels[pixelOffset + 1];
+      var b = orig_pixels[pixelOffset + 2];
+      if (((r+g+b < 32) || (r+g+b > (3*256)-32)) || ((Math.abs(targetr-r) <= 5) && (Math.abs(targetg-g) <= 5) && (Math.abs(targetb-b) <= 5))) {
+        return;
+      }
+      targetr = r;
+      targetg = g;
+      targetb = b;
+      createColorFlash();
+      flashColor();
+      flashtimes = 5;
+    }
+
+    function createColorFlash()
+    {
+
+      var len = pixels.length;
+      var newr=0;
+      var newg=0;
+      var newb=0;
+      if ((Math.abs(targetr) <= 64) && (Math.abs(targetg) <= 64) && (Math.abs(targetb) <= 64)) {
+        newr=255;
+      }
+      for (var i = 0; i < len; i += 4) {
+          var r = pixels[i];
+          var g = pixels[i + 1];
+          var b = pixels[i + 2];
+          if ((Math.abs(targetr-r) <= 5) && (Math.abs(targetg-g) <= 5) && (Math.abs(targetb-b) <= 5)) {
+            /* change the selected color */
+            pixels[i] = newr;
+            pixels[i + 1] = newg;
+            pixels[i + 2] = newb;
+          } else {
+            pixels[i] = orig_pixels[i];
+            pixels[i + 1] = orig_pixels[i+1];
+            pixels[i + 2] = orig_pixels[i+2];
+          }
+      }
+    }
+
+    function flashColor() {
+      clearTimeout(flashtimer);
+      gCtx.putImageData(imageData, 0, 0);
+      flashtimer=setTimeout("endFlashColor()", 1000);
+    }
+    function endFlashColor() {
+      clearTimeout(flashtimer);
+      gCtx.putImageData(flashImageData, 0, 0);
+      flashtimes--;
+      if (flashtimes > 0) {
+        flashtimer=setTimeout("flashColor()", 1000);
+      }
+    }
+
+  </script>
+<body onload="loadImage()">
